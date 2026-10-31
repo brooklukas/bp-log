@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F5FA8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BP Log">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231F5FA8'/%3E%3Cpath d='M8 34h12l5-12 8 22 6-16 4 6h13' fill='none' stroke='white' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Blood Pressure Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: single phone-first column — today's status, log form, trend chart, history. Gauge-dial feel: big mono numerals, cuff-blue chrome, red/teal for sys/dia. */
+:root{
+  --bg:#EEF2F5; --surface:#FFFFFF; --ink:#13202C; --muted:#5B6B79; --line:#D5DEE5;
+  --accent:#1F5FA8; --accent-ink:#FFFFFF; --sys:#D2453A; --dia:#1E8A93; --soft:#E3EAF1;
+  --c-low:#6B5BD2; --c-ok:#2E8B57; --c-hn:#C98A12; --c-g1:#DE6B1F; --c-g2:#D2453A; --c-g3:#9E1B2A;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-num:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E151C; --surface:#16212B; --ink:#E6EDF3; --muted:#93A3B1; --line:#283745;
+  --accent:#6FA8EB; --accent-ink:#0B1622; --sys:#F07468; --dia:#4CC2CB; --soft:#1D2A36;
+  --c-low:#A498F2; --c-ok:#5CC48A; --c-hn:#E8B243; --c-g1:#F2914F; --c-g2:#F07468; --c-g3:#FF5A6C;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E151C; --surface:#16212B; --ink:#E6EDF3; --muted:#93A3B1; --line:#283745;
+  --accent:#6FA8EB; --accent-ink:#0B1622; --sys:#F07468; --dia:#4CC2CB; --soft:#1D2A36;
+  --c-low:#A498F2; --c-ok:#5CC48A; --c-hn:#E8B243; --c-g1:#F2914F; --c-g2:#F07468; --c-g3:#FF5A6C;
+  color-scheme:dark}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0}
+h1{font-size:28px;font-weight:700;letter-spacing:-.01em}
+h2{font-size:18px;font-weight:700}
+.eyebrow{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+header p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.sync{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c-hn)}
+.dot.on{background:var(--c-ok)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.status{display:grid;gap:14px}
+.readout{display:flex;align-items:baseline;gap:4px;flex-wrap:wrap}
+.readout .big{font-size:44px;font-weight:700;line-height:1;letter-spacing:-.02em}
+.readout .s{color:var(--sys)} .readout .d{color:var(--dia)}
+.readout .slash{font-size:34px;color:var(--muted);font-family:var(--f-num)}
+.readout .unit{font-size:13px;color:var(--muted);margin-left:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:999px;
+  border:1px solid currentColor;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat{background:var(--soft);border-radius:10px;padding:10px 12px;min-width:0}
+.stat .v{font-size:17px;font-weight:700;margin-top:2px}
+.stat .k{font-size:11.5px;color:var(--muted)}
+.alert{border-radius:10px;padding:10px 12px;font-size:13.5px;border:1px solid var(--c-g3);color:var(--ink);background:color-mix(in srgb,var(--c-g3) 10%,transparent)}
+.alert[data-kind="low"]{border-color:var(--c-low);background:color-mix(in srgb,var(--c-low) 10%,transparent)}
+.alert b{font-weight:600}
+
+/* Form */
+form{display:grid;gap:14px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+label{display:grid;gap:5px;font-size:12.5px;font-weight:600;color:var(--muted);min-width:0}
+input,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-width:0}
+input.numin{font-family:var(--f-num);font-size:22px;font-weight:700;padding:8px 12px}
+#sys{color:var(--sys)} #dia{color:var(--dia)}
+input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+textarea{resize:vertical;min-height:44px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:13px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:5px 11px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--soft);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:14px;font-weight:500;cursor:pointer}
+.toggle input{width:44px;height:26px;appearance:none;border-radius:999px;background:var(--line);position:relative;cursor:pointer;flex:none;padding:0;border:none;transition:background .15s}
+.toggle input::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--surface);transition:transform .15s}
+.toggle input:checked{background:var(--accent)}
+.toggle input:checked::after{transform:translateX(18px)}
+.btn{font:inherit;font-weight:600;font-size:15px;border:none;border-radius:10px;padding:12px 16px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line);font-size:13.5px;padding:8px 12px}
+.msg{font-size:13px;color:var(--muted);min-height:1.2em;margin:0}
+.msg.err{color:var(--c-g2)}
+
+/* Chart */
+.chart-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.chart-box{overflow-x:auto}
+svg text{font-family:var(--f-num);font-size:9px;fill:var(--muted)}
+.empty{color:var(--muted);font-size:14px;text-align:center;padding:26px 10px;border:1px dashed var(--line);border-radius:10px}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+
+/* History */
+.hist-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+ul.list{list-style:none;margin:12px 0 0;padding:0;display:grid}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:none}
+.item .when{font-size:12.5px;color:var(--muted);grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.item .bp{font-size:19px;font-weight:700}
+.item .bp .s{color:var(--sys)} .item .bp .d{color:var(--dia)}
+.item .meta{font-size:13px;color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.medtag{font-size:11px;font-weight:600;color:var(--accent);border:1px solid var(--line);border-radius:6px;padding:0 6px}
+.del{font:inherit;font-size:12px;background:none;border:none;color:var(--muted);cursor:pointer;padding:4px 6px;border-radius:6px}
+.del.armed{color:var(--c-g2);font-weight:600}
+
+details{font-size:14px}
+summary{cursor:pointer;font-weight:600;font-family:var(--f-display);font-size:16px}
+details ul{margin:10px 0 0;padding-left:18px;color:var(--ink);display:grid;gap:4px}
+.scale{display:grid;gap:6px;margin-top:12px}
+.scale div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.wrap-inner{display:flex;flex-direction:column;gap:18px}
+.lead{color:var(--muted);font-size:14px;margin:6px 0 14px;max-width:62ch}
+.setup-form{display:grid;gap:12px}
+.setup-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.foot{font-size:12px;color:var(--muted);text-align:center;margin:0}
+@media (max-width:380px){.readout .big{font-size:38px}.stats{grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Home monitoring</div>
+      <h1>Blood Pressure Log</h1>
+      <p>One reading a day, before and after starting nifedipine.</p>
+    </div>
+    <div class="hdr-right">
+      <div class="sync" id="sync"><span class="dot" id="syncDot"></span><span id="syncText">Connecting…</span></div>
+      <button class="btn ghost" type="button" id="tokenBtn">Token</button>
+    </div>
+  </header>
+
+
+  <section class="panel" id="setup" aria-labelledby="setupTitle" hidden>
+    <h2 id="setupTitle">Connect this device</h2>
+    <p class="lead">Readings are saved to your private <span class="num">bp-log-data</span> repo, so every device sees the same log. Paste your GitHub token once on each device. It stays on this device only.</p>
+    <form id="setupForm" class="setup-form">
+      <label for="tokenIn">GitHub token<input id="tokenIn" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label>
+      <div class="setup-actions">
+        <button class="btn" type="submit">Connect</button>
+        <button class="btn ghost" type="button" id="forgetBtn">Remove token from this device</button>
+      </div>
+      <p class="msg" id="setupMsg" role="status"></p>
+    </form>
+  </section>
+
+  <div id="app" class="wrap-inner">
+  <section class="panel status" aria-labelledby="statusTitle">
+    <div class="eyebrow" id="statusTitle">7-day average</div>
+    <div class="readout" id="avgReadout">
+      <span class="big num s">–––</span><span class="slash">/</span><span class="big num d">––</span><span class="unit">mmHg</span>
+    </div>
+    <div id="avgPill"></div>
+    <div class="stats">
+      <div class="stat"><div class="k">Readings (7d)</div><div class="v num" id="stCount">0</div></div>
+      <div class="stat"><div class="k">Avg pulse</div><div class="v num" id="stPulse">–</div></div>
+      <div class="stat"><div class="k">Days logged</div><div class="v num" id="stDays">0</div></div>
+    </div>
+    <div id="alertBox" hidden></div>
+  </section>
+
+  <section class="panel" aria-labelledby="formTitle">
+    <h2 id="formTitle" style="margin-bottom:14px">Log a reading</h2>
+    <form id="form" novalidate>
+      <div class="row">
+        <label for="date">Date<input type="date" id="date" required></label>
+        <label for="time">Time<input type="time" id="time" required></label>
+      </div>
+      <div class="row3">
+        <label for="sys">Systolic<input class="numin" id="sys" type="number" inputmode="numeric" min="60" max="260" placeholder="120" required></label>
+        <label for="dia">Diastolic<input class="numin" id="dia" type="number" inputmode="numeric" min="30" max="160" placeholder="80" required></label>
+        <label for="pulse">Pulse<input class="numin" id="pulse" type="number" inputmode="numeric" min="30" max="220" placeholder="70"></label>
+      </div>
+      <label class="toggle" for="med">Took nifedipine today<input type="checkbox" id="med" role="switch"></label>
+      <div style="display:grid;gap:6px">
+        <span class="eyebrow">Quick notes</span>
+        <div class="chips" id="chips">
+          <button type="button" class="chip" aria-pressed="false">Rested 5 min</button>
+          <button type="button" class="chip" aria-pressed="false">After coffee</button>
+          <button type="button" class="chip" aria-pressed="false">Stressed</button>
+          <button type="button" class="chip" aria-pressed="false">After exercise</button>
+          <button type="button" class="chip" aria-pressed="false">Headache</button>
+          <button type="button" class="chip" aria-pressed="false">Dizzy</button>
+          <button type="button" class="chip" aria-pressed="false">Poor sleep</button>
+        </div>
+      </div>
+      <label for="notes">Other notes<textarea id="notes" rows="2" placeholder="Anything else worth mentioning to your GP"></textarea></label>
+      <button class="btn" type="submit" id="saveBtn">Save reading</button>
+      <p class="msg" id="formMsg" role="status"></p>
+    </form>
+  </section>
+
+  <section class="panel" aria-labelledby="chartTitle">
+    <div class="chart-head">
+      <h2 id="chartTitle">Trend</h2>
+      <div class="legend">
+        <span><i style="background:var(--sys)"></i>Systolic</span>
+        <span><i style="background:var(--dia)"></i>Diastolic</span>
+        <span><i style="background:none;border-top:2px dashed var(--muted);height:0"></i>Home limit 135/85</span>
+      </div>
+    </div>
+    <div class="chart-box" id="chart"></div>
+    <div class="compare" id="compare" hidden></div>
+  </section>
+
+  <section class="panel" aria-labelledby="histTitle">
+    <div class="hist-head">
+      <h2 id="histTitle">History</h2>
+      <button class="btn ghost" type="button" id="copyBtn">Copy for GP</button>
+    </div>
+    <p class="msg" id="copyMsg" role="status"></p>
+    <textarea id="copyFallback" rows="6" readonly hidden></textarea>
+    <ul class="list" id="list"></ul>
+  </section>
+
+  <section class="panel">
+    <details>
+      <summary>Taking an accurate reading</summary>
+      <ul>
+        <li>Same time each day, before taking your tablet.</li>
+        <li>No caffeine, smoking or exercise for 30 minutes before.</li>
+        <li>Sit with back supported, feet flat, legs uncrossed. Rest 5 minutes.</li>
+        <li>Cuff on bare upper arm, at heart level, arm resting on a table.</li>
+        <li>Don't talk. Take two readings a minute apart and log the second.</li>
+      </ul>
+      <div class="scale" id="scale"></div>
+    </details>
+  </section>
+
+  </div>
+
+  <p class="foot">Categories follow the Heart Foundation (Australia) adult guideline. Home readings average a little lower than clinic ones, so the home limit is 135/85. Talk to your GP about what your numbers mean for you.</p>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const CATS = [
+    {key:"g3", name:"Grade 3 (severe) hypertension", short:"Severe", color:"var(--c-g3)", s:180, d:110},
+    {key:"g2", name:"Grade 2 (moderate) hypertension", short:"Grade 2", color:"var(--c-g2)", s:160, d:100},
+    {key:"g1", name:"Grade 1 (mild) hypertension", short:"Grade 1", color:"var(--c-g1)", s:140, d:90},
+    {key:"hn", name:"High-normal", short:"High-normal", color:"var(--c-hn)", s:130, d:85},
+    {key:"n",  name:"Normal", short:"Normal", color:"var(--c-ok)", s:120, d:80},
+    {key:"o",  name:"Optimal", short:"Optimal", color:"var(--c-ok)", s:0, d:0},
+  ];
+  const LOW = {key:"low", name:"Low (below 90/60)", short:"Low", color:"var(--c-low)"};
+  function cat(s,d){
+    if (s < 90 || d < 60) return LOW;
+    for (const c of CATS){ if (s >= c.s || d >= c.d) return c; }
+    return CATS[CATS.length-1];
+  }
+  function pill(c, label){
+    const el = document.createElement("span");
+    el.className = "pill"; el.style.color = c.color; el.textContent = label || c.name;
+    return el;
+  }
+
+  // Scale reference
+  const scaleRows = [["Optimal","< 120 / < 80","o"],["Normal","120–129 / 80–84","n"],["High-normal","130–139 / 85–89","hn"],
+    ["Grade 1 hypertension","140–159 / 90–99","g1"],["Grade 2 hypertension","160–179 / 100–109","g2"],["Grade 3 hypertension","≥ 180 / ≥ 110","g3"],["Low","< 90 / < 60","low"]];
+  scaleRows.forEach(([n,r,k])=>{
+    const c = k==="low"?LOW:CATS.find(x=>x.key===k);
+    const row = document.createElement("div");
+    row.appendChild(pill(c,n));
+    const v = document.createElement("span"); v.className="num"; v.textContent=r; row.appendChild(v);
+    $("scale").appendChild(row);
+  });
+
+  // Defaults for date/time
+  function pad(n){return String(n).padStart(2,"0")}
+  function setNow(){
+    const d = new Date();
+    $("date").value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    $("time").value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  setNow();
+
+  $("chips").addEventListener("click", e=>{
+    const b = e.target.closest(".chip"); if(!b) return;
+    b.setAttribute("aria-pressed", b.getAttribute("aria-pressed")==="true"?"false":"true");
+  });
+
+  // ---------- Storage: private GitHub repo ----------
+  const REPO = "brooklukas/bp-log-data";
+  const FILE = "readings.json";
+  const API = `https://api.github.com/repos/${REPO}/contents/${FILE}`;
+  const TKEY = "bp-log-token", CKEY = "bp-log-cache";
+  let readings = [];
+  let sha = null;
+  let store = null;
+  let busy = false;
+
+  const ls = {
+    get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
+    set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} },
+    del(k){ try{ localStorage.removeItem(k) }catch(e){} }
+  };
+  function token(){ return ls.get(TKEY) }
+  function setSync(on, text){ $("syncDot").classList.toggle("on", on); $("syncText").textContent = text; }
+
+  const b64enc = str => { const bytes = new TextEncoder().encode(str); let bin=""; bytes.forEach(b=>bin+=String.fromCharCode(b)); return btoa(bin); };
+  const b64dec = b64 => { const bin = atob(b64.replace(/\n/g,"")); return new TextDecoder().decode(Uint8Array.from(bin, c=>c.charCodeAt(0))); };
+
+  async function gh(method, body){
+    const res = await fetch(API + (method==="GET" ? `?t=${Date.now()}` : ""), {
+      method, cache:"no-store",
+      headers:{ "Authorization":`Bearer ${token()}`, "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28",
+        ...(body?{"Content-Type":"application/json"}:{}) },
+      body: body?JSON.stringify(body):undefined
+    });
+    return res;
+  }
+
+  async function pull(){
+    const res = await gh("GET");
+    if (res.status===404){ sha=null; return []; }
+    if (res.status===401) throw Object.assign(new Error("auth"),{code:"auth"});
+    if (res.status===403) throw Object.assign(new Error("forbidden"),{code:"forbidden"});
+    if (!res.ok) throw Object.assign(new Error("http"),{code:"net"});
+    const j = await res.json();
+    sha = j.sha;
+    const data = JSON.parse(b64dec(j.content||"") || "{}");
+    return Array.isArray(data.readings) ? data.readings : [];
+  }
+
+  async function push(list, message){
+    const body = { message, content: b64enc(JSON.stringify({readings:list}, null, 1)) };
+    if (sha) body.sha = sha;
+    const res = await gh("PUT", body);
+    if (res.status===409 || res.status===422) return false;  // changed on another device
+    if (res.status===401) throw Object.assign(new Error("auth"),{code:"auth"});
+    if (res.status===403 || res.status===404) throw Object.assign(new Error("forbidden"),{code:"forbidden"});
+    if (!res.ok) throw Object.assign(new Error("http"),{code:"net"});
+    const j = await res.json(); sha = j.content.sha; return true;
+  }
+
+  // Apply a change on top of the latest copy, retrying if another device saved in between.
+  async function mutate(fn, message){
+    for (let i=0;i<4;i++){
+      const latest = await pull();
+      const next = fn(latest);
+      if (await push(next, message)){ readings = next; ls.set(CKEY, JSON.stringify(readings)); render(); return; }
+    }
+    throw Object.assign(new Error("conflict"),{code:"net"});
+  }
+
+  function errText(e){
+    if (e && e.code==="auth") return "GitHub rejected the token. It may have expired. Tap “Token” to paste a new one.";
+    if (e && e.code==="forbidden") return "The token can't access bp-log-data. Check it has Contents: Read and write on that repo.";
+    return "Couldn't reach GitHub. Check your connection and try again.";
+  }
+
+  async function sync(){
+    if (!token() || busy) return;
+    busy = true; setSync(false, "Syncing…");
+    try{
+      readings = await pull(); ls.set(CKEY, JSON.stringify(readings));
+      setSync(true, "Synced with GitHub"); render();
+    }catch(e){
+      setSync(false, e.code==="auth"||e.code==="forbidden" ? "Token problem" : "Offline · showing last sync");
+      if (e.code==="auth"||e.code==="forbidden"){ $("setupMsg").className="msg err"; $("setupMsg").textContent=errText(e); showSetup(true); }
+    }finally{ busy = false; }
+  }
+
+  store = {
+    async add(r){
+      r.id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+      await mutate(list => list.concat([r]), `Add reading ${r.sys}/${r.dia} (${r.ts.replace("T"," ")})`);
+    },
+    async remove(id){
+      await mutate(list => list.filter(x=>x.id!==id), "Delete reading");
+    }
+  };
+
+  // Setup panel
+  function showSetup(on){ $("setup").hidden = !on; $("app").hidden = on && !token(); }
+  $("tokenBtn").addEventListener("click", ()=>{ $("setupMsg").textContent=""; showSetup($("setup").hidden); });
+  $("setupForm").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const t = $("tokenIn").value.trim(); const m = $("setupMsg"); m.className="msg";
+    if (!t){ m.className="msg err"; m.textContent="Paste your GitHub token first."; return; }
+    const old = token(); ls.set(TKEY, t); m.textContent = "Checking…";
+    try{
+      readings = await pull(); ls.set(CKEY, JSON.stringify(readings));
+      $("tokenIn").value=""; m.textContent=""; showSetup(false); $("app").hidden=false;
+      setSync(true, "Synced with GitHub"); render();
+    }catch(err){
+      if (old) ls.set(TKEY, old); else ls.del(TKEY);
+      m.className="msg err"; m.textContent = errText(err);
+    }
+  });
+  $("forgetBtn").addEventListener("click", ()=>{
+    ls.del(TKEY); ls.del(CKEY); readings=[]; render();
+    setSync(false, "Not connected"); $("app").hidden = true; $("setup").hidden = false;
+    $("setupMsg").className="msg"; $("setupMsg").textContent = "Token removed from this device.";
+  });
+
+  // Boot
+  try{ readings = JSON.parse(ls.get(CKEY)||"[]") }catch(e){ readings=[] }
+  render();
+  if (token()){ $("setup").hidden = true; $("app").hidden = false; sync(); }
+  else { $("setup").hidden = false; $("app").hidden = true; setSync(false, "Not connected"); }
+  document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState==="visible") sync(); });
+
+  // ---------- Form ----------
+  $("form").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const msg = $("formMsg"); msg.className="msg";
+    const s = parseInt($("sys").value,10), d = parseInt($("dia").value,10);
+    const pRaw = $("pulse").value.trim(); const p = pRaw===""?null:parseInt(pRaw,10);
+    if (!$("date").value || !$("time").value){ msg.className="msg err"; msg.textContent="Add the date and time of the reading."; return; }
+    if (!(s>=60 && s<=260)){ msg.className="msg err"; msg.textContent="Systolic (top number) should be between 60 and 260."; $("sys").focus(); return; }
+    if (!(d>=30 && d<=160)){ msg.className="msg err"; msg.textContent="Diastolic (bottom number) should be between 30 and 160."; $("dia").focus(); return; }
+    if (d >= s){ msg.className="msg err"; msg.textContent="Diastolic should be lower than systolic. Check the two numbers aren't swapped."; return; }
+    if (p!==null && !(p>=30 && p<=220)){ msg.className="msg err"; msg.textContent="Pulse should be between 30 and 220, or leave it blank."; return; }
+    if (!store){ msg.className="msg err"; msg.textContent="Still connecting. Try again in a moment."; return; }
+    const tags = [...document.querySelectorAll('.chip[aria-pressed="true"]')].map(b=>b.textContent);
+    const r = { ts: `${$("date").value}T${$("time").value}`, sys:s, dia:d, pulse:p, med:$("med").checked,
+      tags, notes: $("notes").value.trim().slice(0,500), created: Date.now() };
+    $("saveBtn").disabled = true; msg.textContent = "Saving…";
+    try{
+      await store.add(r);
+      msg.textContent = `Saved ${s}/${d}.`;
+      $("sys").value=""; $("dia").value=""; $("pulse").value=""; $("notes").value="";
+      document.querySelectorAll(".chip").forEach(b=>b.setAttribute("aria-pressed","false"));
+      setNow();
+    }catch(err){
+      msg.className="msg err"; msg.textContent = errText(err);
+    }finally{ $("saveBtn").disabled = false; }
+  });
+
+  // ---------- Render ----------
+  function parseTs(ts){ const [d,t] = ts.split("T"); const [y,m,dd]=d.split("-").map(Number); const [h,mi]=(t||"0:0").split(":").map(Number); return new Date(y,m-1,dd,h,mi); }
+  function fmtDate(dt){ return dt.toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"}); }
+  function fmtTime(dt){ return dt.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"}); }
+  function avg(arr,k){ const v=arr.map(r=>r[k]).filter(x=>typeof x==="number"); return v.length? v.reduce((a,b)=>a+b,0)/v.length : null; }
+
+  function sorted(){ return readings.slice().sort((a,b)=> a.ts<b.ts?1:a.ts>b.ts?-1:0); }
+
+  function render(){
+    const all = sorted();
+    // 7-day
+    const cutoff = new Date(); cutoff.setHours(0,0,0,0); cutoff.setDate(cutoff.getDate()-6);
+    const week = all.filter(r=>parseTs(r.ts)>=cutoff);
+    const ro = $("avgReadout"); const sEl = ro.querySelector(".s"), dEl = ro.querySelector(".d");
+    $("avgPill").replaceChildren();
+    if (week.length){
+      const as = Math.round(avg(week,"sys")), ad = Math.round(avg(week,"dia"));
+      sEl.textContent = as; dEl.textContent = ad;
+      const c = cat(as,ad);
+      $("avgPill").appendChild(pill(c));
+      if (as>=135 || ad>=85){
+        const note = document.createElement("span"); note.style.cssText="font-size:12.5px;color:var(--muted);margin-left:8px";
+        note.textContent = "Above the home limit of 135/85"; $("avgPill").appendChild(note);
+      }
+      const ap = avg(week,"pulse"); $("stPulse").textContent = ap? Math.round(ap) : "–";
+    } else {
+      sEl.textContent="–––"; dEl.textContent="––"; $("stPulse").textContent="–";
+      const n = document.createElement("span"); n.style.cssText="font-size:13px;color:var(--muted)";
+      n.textContent = all.length ? "No readings in the last 7 days." : "Log your first reading below to see your average.";
+      $("avgPill").appendChild(n);
+    }
+    $("stCount").textContent = week.length;
+    $("stDays").textContent = new Set(all.map(r=>r.ts.slice(0,10))).size;
+
+    // Alert on latest
+    const box = $("alertBox"); box.replaceChildren(); box.hidden = true; delete box.dataset.kind;
+    const last = all[0];
+    if (last){
+      const c = cat(last.sys,last.dia);
+      if (c.key==="g3"){
+        box.hidden=false; box.className="alert";
+        box.innerHTML = "<b>Latest reading is very high.</b> Rest 5 minutes and re-check. If it stays at 180/110 or above, contact your GP today or call healthdirect on 1800 022 222. Call 000 if you have chest pain, shortness of breath, weakness, vision changes or a severe headache.";
+      } else if (c.key==="low"){
+        box.hidden=false; box.className="alert"; box.dataset.kind="low";
+        box.innerHTML = "<b>Latest reading is low.</b> If you feel dizzy, faint or unwell, sit or lie down and let your GP know, especially after starting a new blood pressure tablet.";
+      }
+    }
+
+    renderChart(all);
+    renderList(all);
+  }
+
+  function renderChart(all){
+    const host = $("chart"); host.replaceChildren();
+    const pts = all.slice(0,30).reverse();
+    const cmp = $("compare"); cmp.replaceChildren(); cmp.hidden = true;
+    if (pts.length < 2){
+      const e = document.createElement("div"); e.className="empty";
+      e.textContent = pts.length ? "One more reading and your trend line appears here." : "Your last 30 readings will chart here, with the day you started nifedipine marked.";
+      host.appendChild(e);
+    } else {
+      const W=340,H=190,L=30,R=10,T=12,B=26;
+      const lo = Math.min(...pts.map(p=>p.dia), 85), hi = Math.max(...pts.map(p=>p.sys), 135);
+      const y0 = Math.floor((lo-10)/20)*20, y1 = Math.ceil((hi+10)/20)*20;
+      const x = i => L + (pts.length===1?0: i*(W-L-R)/(pts.length-1));
+      const y = v => T + (y1-v)*(H-T-B)/(y1-y0);
+      const NS="http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(NS,"svg");
+      svg.setAttribute("viewBox",`0 0 ${W} ${H}`); svg.setAttribute("width","100%"); svg.setAttribute("role","img");
+      svg.setAttribute("aria-label","Line chart of systolic and diastolic readings");
+      svg.style.minWidth="300px"; svg.style.display="block";
+      const el=(tag,attrs,txt)=>{const n=document.createElementNS(NS,tag);for(const k in attrs)n.setAttribute(k,attrs[k]);if(txt!=null)n.textContent=txt;svg.appendChild(n);return n;};
+      // med shading from first medicated reading
+      const firstMed = pts.findIndex(p=>p.med);
+      if (firstMed>=0){
+        const sx = firstMed===0? L : (x(firstMed-1)+x(firstMed))/2;
+        el("rect",{x:sx,y:T,width:W-R-sx,height:H-T-B,fill:"var(--soft)"});
+        el("text",{x:sx+4,y:T+10},"On nifedipine");
+      }
+      for(let v=y0; v<=y1; v+=20){
+        el("line",{x1:L,x2:W-R,y1:y(v),y2:y(v),stroke:"var(--line)","stroke-width":1});
+        el("text",{x:L-5,y:y(v)+3,"text-anchor":"end"},v);
+      }
+      [[135,"var(--sys)"],[85,"var(--dia)"]].forEach(([v,c])=>el("line",{x1:L,x2:W-R,y1:y(v),y2:y(v),stroke:c,"stroke-width":1,"stroke-dasharray":"4 3",opacity:.7}));
+      const path = k => pts.map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(p[k]).toFixed(1)}`).join("");
+      el("path",{d:path("sys"),fill:"none",stroke:"var(--sys)","stroke-width":2,"stroke-linejoin":"round"});
+      el("path",{d:path("dia"),fill:"none",stroke:"var(--dia)","stroke-width":2,"stroke-linejoin":"round"});
+      pts.forEach((p,i)=>{
+        const lastPt = i===pts.length-1;
+        el("circle",{cx:x(i),cy:y(p.sys),r:lastPt?4:2.5,fill:"var(--sys)",stroke:"var(--surface)","stroke-width":lastPt?1.5:0});
+        el("circle",{cx:x(i),cy:y(p.dia),r:lastPt?4:2.5,fill:"var(--dia)",stroke:"var(--surface)","stroke-width":lastPt?1.5:0});
+      });
+      const f = parseTs(pts[0].ts), l = parseTs(pts[pts.length-1].ts);
+      const sd = d=>d.toLocaleDateString("en-AU",{day:"numeric",month:"short"});
+      el("text",{x:L,y:H-8,"text-anchor":"start"},sd(f));
+      el("text",{x:W-R,y:H-8,"text-anchor":"end"},sd(l));
+      host.appendChild(svg);
+    }
+    // Before vs on meds
+    const before = all.filter(r=>!r.med), on = all.filter(r=>r.med);
+    if (before.length && on.length){
+      cmp.hidden = false;
+      [["Before nifedipine",before],["On nifedipine",on]].forEach(([k,arr])=>{
+        const d = document.createElement("div"); d.className="stat";
+        const kk = document.createElement("div"); kk.className="k"; kk.textContent = `${k} · ${arr.length} reading${arr.length>1?"s":""}`;
+        const v = document.createElement("div"); v.className="v num";
+        v.textContent = `${Math.round(avg(arr,"sys"))}/${Math.round(avg(arr,"dia"))}`;
+        d.append(kk,v); cmp.appendChild(d);
+      });
+    }
+  }
+
+  function renderList(all){
+    const ul = $("list"); ul.replaceChildren();
+    if (!all.length){
+      const li = document.createElement("li"); li.className="empty"; li.textContent="No readings yet. Each one you save shows up here with its category.";
+      ul.appendChild(li); $("copyBtn").disabled = true; return;
+    }
+    $("copyBtn").disabled = false;
+    all.forEach(r=>{
+      const dt = parseTs(r.ts); const c = cat(r.sys,r.dia);
+      const li = document.createElement("li"); li.className="item";
+      const when = document.createElement("div"); when.className="when";
+      when.append(`${fmtDate(dt)} · ${fmtTime(dt)}`);
+      if (r.med){ const m=document.createElement("span"); m.className="medtag"; m.textContent="Nifedipine"; when.appendChild(m); }
+      const bp = document.createElement("div"); bp.className="bp num";
+      const s=document.createElement("span"); s.className="s"; s.textContent=r.sys;
+      const d=document.createElement("span"); d.className="d"; d.textContent=r.dia;
+      bp.append(s,"/",d);
+      const meta = document.createElement("div"); meta.className="meta";
+      const bits = [];
+      if (typeof r.pulse==="number") bits.push(`♥ ${r.pulse}`);
+      if (r.tags && r.tags.length) bits.push(r.tags.join(", "));
+      if (r.notes) bits.push(r.notes);
+      meta.textContent = bits.join(" · ");
+      const right = document.createElement("div"); right.style.cssText="display:flex;align-items:center;gap:6px";
+      right.appendChild(pill(c, c.short));
+      const del = document.createElement("button"); del.className="del"; del.type="button"; del.textContent="Delete";
+      del.setAttribute("aria-label",`Delete reading ${r.sys}/${r.dia} from ${fmtDate(dt)}`);
+      let t=null;
+      del.addEventListener("click", async ()=>{
+        if (!del.classList.contains("armed")){ del.classList.add("armed"); del.textContent="Confirm"; t=setTimeout(()=>{del.classList.remove("armed");del.textContent="Delete";},3000); return; }
+        clearTimeout(t); del.disabled=true;
+        try{ await store.remove(r.id); }catch(e){ del.disabled=false; del.textContent="Retry"; }
+      });
+      li.append(when, bp, meta, right);
+      const delWrap = document.createElement("div"); delWrap.style.cssText="grid-column:3;justify-self:end"; delWrap.appendChild(del);
+      li.appendChild(delWrap);
+      ul.appendChild(li);
+    });
+  }
+
+  // Copy for GP
+  $("copyBtn").addEventListener("click", ()=>{
+    const all = sorted();
+    const lines = ["Blood pressure log (home readings)", ""];
+    const before = all.filter(r=>!r.med), on = all.filter(r=>r.med);
+    if (before.length) lines.push(`Average before nifedipine: ${Math.round(avg(before,"sys"))}/${Math.round(avg(before,"dia"))} (${before.length} readings)`);
+    if (on.length) lines.push(`Average on nifedipine: ${Math.round(avg(on,"sys"))}/${Math.round(avg(on,"dia"))} (${on.length} readings)`);
+    lines.push("");
+    all.slice().reverse().forEach(r=>{
+      const dt = parseTs(r.ts);
+      const extra = [r.pulse!=null?`pulse ${r.pulse}`:null, r.med?"took nifedipine":null, ...(r.tags||[]), r.notes||null].filter(Boolean).join(", ");
+      lines.push(`${dt.toLocaleDateString("en-AU")} ${fmtTime(dt)}  ${r.sys}/${r.dia}${extra?"  ("+extra+")":""}`);
+    });
+    const text = lines.join("\n");
+    const m = $("copyMsg"); const fb = $("copyFallback");
+    const fallback = ()=>{ fb.hidden=false; fb.value=text; fb.focus(); fb.select(); m.textContent="Copy the selected text below."; };
+    try{
+      navigator.clipboard.writeText(text).then(()=>{ m.textContent="Copied. Paste it into a message or email to your GP."; fb.hidden=true; }, fallback);
+    }catch(e){ fallback(); }
+  });
+})();
+</script>
+</body>
+</html>
