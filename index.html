@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="BP Log">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231F5FA8'/%3E%3Cpath d='M8 34h12l5-12 8 22 6-16 4 6h13' fill='none' stroke='white' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <title>Blood Pressure Log</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -616,6 +618,9 @@ details ul{margin:10px 0 0;padding-left:18px;color:var(--ink);display:grid;gap:4
     }catch(e){ fallback(); }
   });
 })();
+</script>
+<script>
+if ("serviceWorker" in navigator) { window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{})); }
 </script>
 </body>
 </html>
